@@ -2,14 +2,15 @@ from flask import Flask, jsonify
 import os
 from flask import Flask, request, jsonify
 from twilio.rest import Client
+from dotenv import load_dotenv
 
 
 app = Flask(__name__)
-
+load_dotenv()
 # Twilio Credentials
-account_sid = "ACe92013a54876aade4aaf00e89cedbae2"
-auth_token = "47d1e0c4687e1e5fed6357b91fcd0c1b"
-twilio_whatsapp_number = "whatsapp:+14155238886"
+account_sid = os.getenv("TWILIO_ACCOUNT_SID", default="ACe92013a54876aade4aaf00e89cedbae2")
+auth_token = os.getenv("TWILIO_AUTH_TOKEN", default="47d1e0c4687e1e5fed6357b91fcd0c1b")
+twilio_whatsapp_number = os.getenv("TWILIO_WHATSAPP_NUMBER", default="whatsapp:+14155238886")
 
 # Validate Twilio credentials
 if not account_sid or not auth_token or not twilio_whatsapp_number:
