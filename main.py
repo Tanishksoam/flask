@@ -29,6 +29,16 @@ AUTHORIZED_NUMBERS = ["whatsapp:+919897283397", "whatsapp:+14155238886"]
 def is_authorized_number(from_number):
     return from_number in AUTHORIZED_NUMBERS
 
+def user_exists(phone):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT 1 FROM users WHERE phone = %s LIMIT 1;", (phone,))
+        return cursor.fetchone() is not None
+    finally:
+        cursor.close()
+        conn.close()
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
     data = request.form
@@ -41,7 +51,15 @@ def whatsapp_webhook():
     try:
         response_message = ""
 
-        if message_body.startswith("register:"):
+        if not user_exists(from_number) and not message_body.startswith("register:"):
+            response_message = (
+                "👋 Hi! You're not registered yet.\n"
+                "Please register using:\n"
+                "`register:YourName,latitude,longitude,favoriteSpot`\n"
+                "Example:\n`register:John,28.6448,77.2167,Malibu`"
+            )
+
+        elif message_body.startswith("register:"):
             try:
                 # Example: register:John,28.6448,77.2167,Malibu
                 details = message_body[len("register:"):].split(",")
@@ -51,18 +69,20 @@ def whatsapp_webhook():
                 favorite_surfspots = details[3].strip()
 
                 save_user(from_number, name, latitude, longitude, favorite_surfspots)
-                response_message = f"Hi {name}, you're registered successfully 🌊📍"
+                response_message = f"🏄‍♂️ Hi {name}, you're registered successfully!"
 
             except Exception as e:
                 print("Register error:", e)
-                response_message = "Error! Use: register:Name,lat,long,fav_spot"
+                response_message = (
+                    "⚠️ Registration failed. Use:\n"
+                    "`register:Name,lat,long,spot`\n"
+                    "Example:\n`register:John,28.6448,77.2167,Malibu`"
+                )
 
         elif message_body.startswith("prefs:"):
             try:
-                # Example: prefs: swellHeight=0.5-2, windSpeed=3-8
                 prefs_raw = message_body[len("prefs:"):].split(",")
                 prefs_dict = {}
-
                 for pref in prefs_raw:
                     if "=" in pref and "-" in pref:
                         key, val = pref.split("=")
@@ -71,14 +91,39 @@ def whatsapp_webhook():
                         prefs_dict[f"{key.strip()}_max"] = max_val
 
                 update_user_preferences(from_number, prefs_dict)
-                response_message = "Your preferences were saved successfully ⚙️"
+                response_message = "✅ Preferences updated successfully!"
 
             except Exception as e:
                 print("Prefs error:", e)
-                response_message = "Error! Use: prefs: swellHeight=0.5-2, windSpeed=3-8"
+                response_message = (
+                    "⚠️ Error in saving preferences.\n"
+                    "Use format like:\n"
+                    "`prefs: swellHeight=0.5-2, windSpeed=3-8`\n\n"
+                    "📊 Available preference keys:\n"
+                    "- swellHeight\n"
+                    "- swellPeriod\n"
+                    "- swellDirection\n"
+                    "- secondarySwellHeight\n"
+                    "- secondarySwellPeriod\n"
+                    "- secondarySwellDirection\n"
+                    "- windSpeed\n"
+                    "- windDirection\n"
+                    "\nEach should be in `min-max` format."
+                )
+
+        elif message_body in ["hi", "hello", "help"]:
+            response_message = (
+                "👋 Welcome! Here's what you can do:\n"
+                "- `register:Name,lat,long,spot`\n"
+                "- `prefs: key1=min-max, key2=min-max`\n"
+                "Example:\n`prefs: swellHeight=0.5-2, windSpeed=3-8`"
+            )
 
         else:
-            response_message = "Send:\n- register:Name,lat,long,spot\n- prefs: swellHeight=0.5-2"
+            response_message = (
+                "🤖 Unknown command.\n"
+                "Send `help` for instructions."
+            )
 
         twilio_client.messages.create(
             body=response_message,
