@@ -8,17 +8,13 @@ from psycopg2.extras import RealDictCursor
 app = Flask(__name__)
 load_dotenv()
 
-# Twilio Credentials
+# Twilio setup
 account_sid = os.getenv("TWILIO_ACCOUNT_SID")
 auth_token = os.getenv("TWILIO_AUTH_TOKEN")
 twilio_whatsapp_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
-
-if not account_sid or not auth_token or not twilio_whatsapp_number:
-    raise ValueError("Twilio credentials are missing.")
-
 twilio_client = Client(account_sid, auth_token)
 
-# Database connection
+# PostgreSQL connection
 def get_db_connection():
     return psycopg2.connect(
         host=os.getenv("PGHOST"),
@@ -28,56 +24,61 @@ def get_db_connection():
         password=os.getenv("PGPASSWORD")
     )
 
-# Predefined responses
-PREDEFINED_RESPONSES = {
-    "hi": "Hello! How can I assist you today?",
-    "hello": "Hi there! What can I do for you?",
-    "help": "Here are some options: 1. Order status 2. Account help 3. Contact support.",
-    "order status": "Please provide your order number.",
-    "account help": "For account-related queries, visit our website or contact support.",
-    "contact support": "Reach our support team at support@example.com.",
-    "bye": "Goodbye! Have a great day!",
-    "default": "I'm sorry, I didn't understand that. Can you please rephrase?"
-}
-
 AUTHORIZED_NUMBERS = ["whatsapp:+919897283397", "whatsapp:+14155238886"]
-
-def get_response_message(message_body):
-    return PREDEFINED_RESPONSES.get(message_body, PREDEFINED_RESPONSES["default"])
 
 def is_authorized_number(from_number):
     return from_number in AUTHORIZED_NUMBERS
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
+    data = request.form
+    from_number = data.get("From")
+    message_body = data.get("Body", "").lower().strip()
+
+    if not is_authorized_number(from_number):
+        return jsonify({"error": "Unauthorized number"}), 403
+
     try:
-        data = request.form
-        from_number = data.get("From")
-        message_body = data.get("Body", "").lower().strip()
+        response_message = ""
 
-        if not is_authorized_number(from_number):
-            return jsonify({"error": "Unauthorized number"}), 403
-
-        # Check if message is like 'surf 20'
-        if message_body.startswith("surf "):
+        if message_body.startswith("register:"):
             try:
-                surf_id = int(message_body.split(" ")[1])
-                conn = get_db_connection()
-                cursor = conn.cursor(cursor_factory=RealDictCursor)
-                cursor.execute("SELECT * FROM surf_spots WHERE id = %s;", (surf_id,))
-                surf_spot = cursor.fetchone()
-                cursor.close()
-                conn.close()
+                # Example: register:John,28.6448,77.2167,Malibu
+                details = message_body[len("register:"):].split(",")
+                name = details[0].strip().title()
+                latitude = float(details[1].strip())
+                longitude = float(details[2].strip())
+                favorite_surfspots = details[3].strip()
 
-                if surf_spot:
-                    response_message = f"🌊 Surf Spot #{surf_id}:\n" + "\n".join(f"{k}: {v}" for k, v in surf_spot.items())
-                else:
-                    response_message = f"No surf spot found with ID {surf_id}."
+                save_user(from_number, name, latitude, longitude, favorite_surfspots)
+                response_message = f"Hi {name}, you're registered successfully 🌊📍"
+
             except Exception as e:
-                print("Error querying DB:", e)
-                response_message = "Oops! Could not fetch surf spot. Please try again."
+                print("Register error:", e)
+                response_message = "Error! Use: register:Name,lat,long,fav_spot"
+
+        elif message_body.startswith("prefs:"):
+            try:
+                # Example: prefs: swellHeight=0.5-2, windSpeed=3-8
+                prefs_raw = message_body[len("prefs:"):].split(",")
+                prefs_dict = {}
+
+                for pref in prefs_raw:
+                    if "=" in pref and "-" in pref:
+                        key, val = pref.split("=")
+                        min_val, max_val = map(float, val.split("-"))
+                        prefs_dict[f"{key.strip()}_min"] = min_val
+                        prefs_dict[f"{key.strip()}_max"] = max_val
+
+                update_user_preferences(from_number, prefs_dict)
+                response_message = "Your preferences were saved successfully ⚙️"
+
+            except Exception as e:
+                print("Prefs error:", e)
+                response_message = "Error! Use: prefs: swellHeight=0.5-2, windSpeed=3-8"
+
         else:
-            response_message = get_response_message(message_body)
+            response_message = "Send:\n- register:Name,lat,long,spot\n- prefs: swellHeight=0.5-2"
 
         twilio_client.messages.create(
             body=response_message,
@@ -85,15 +86,48 @@ def whatsapp_webhook():
             to=from_number
         )
 
-        return jsonify({"message": "Message sent successfully"}), 200
+        return jsonify({"message": "Handled successfully"}), 200
 
     except Exception as e:
-        print(f"Webhook error: {e}")
+        print("Webhook error:", e)
         return jsonify({"error": str(e)}), 500
 
-@app.route('/')
-def index():
-    return jsonify({"Choo Choo": "Welcome to your Flask app 🚅"})
+def save_user(phone, name, lat, lon, fav_spots):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO users (phone, name, latitude, longitude, favorite_surfspots)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (phone) DO UPDATE
+            SET name = EXCLUDED.name,
+                latitude = EXCLUDED.latitude,
+                longitude = EXCLUDED.longitude,
+                favorite_surfspots = EXCLUDED.favorite_surfspots;
+        """, (phone, name, lat, lon, fav_spots))
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
 
-if __name__ == '__main__':
+def update_user_preferences(phone, prefs):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        set_clause = ", ".join(f"{k} = %s" for k in prefs.keys())
+        values = list(prefs.values()) + [phone]
+        cursor.execute(f"""
+            UPDATE users SET {set_clause}
+            WHERE phone = %s;
+        """, values)
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route("/")
+def home():
+    return jsonify({"status": "WhatsApp onboarding running"}), 200
+
+if __name__ == "__main__":
     app.run(debug=True, port=int(os.getenv("PORT", 8000)))
