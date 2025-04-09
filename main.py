@@ -29,101 +29,87 @@ AUTHORIZED_NUMBERS = ["whatsapp:+919897283397", "whatsapp:+14155238886"]
 def is_authorized_number(from_number):
     return from_number in AUTHORIZED_NUMBERS
 
-def user_exists(phone):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT 1 FROM users WHERE phone = %s LIMIT 1;", (phone,))
-        return cursor.fetchone() is not None
-    finally:
-        cursor.close()
-        conn.close()
-
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
     data = request.form
     from_number = data.get("From")
-    message_body = data.get("Body", "").lower().strip()
+    message_body = data.get("Body", "").strip()
 
     if not is_authorized_number(from_number):
         return jsonify({"error": "Unauthorized number"}), 403
 
     try:
         response_message = ""
+        user = get_user(from_number)
 
-        if not user_exists(from_number) and not message_body.startswith("register:"):
+        if message_body.lower() == "register now":
+            create_or_reset_user(from_number)
+            set_registration_state(from_number, "awaiting_name")
+            response_message = "👋 Great! Let's get you registered.\nPlease enter your *name*:"
+        
+        elif user and user.get("registration_state") == "awaiting_name":
+            update_user_field(from_number, "name", message_body.title())
+            set_registration_state(from_number, "awaiting_location")
             response_message = (
-                "👋 Hi! You're not registered yet.\n"
-                "Please register using:\n"
-                "`register:YourName,latitude,longitude,favoriteSpot`\n"
-                "Example:\n`register:John,28.6448,77.2167,Malibu`"
+                "✅ Name saved.\nNow, please share your *location* as `lat,long`\n"
+                "Example: `28.6448,77.2167`"
             )
 
-        elif message_body.startswith("register:"):
+        elif user and user.get("registration_state") == "awaiting_location":
             try:
-                # Example: register:John,28.6448,77.2167,Malibu
-                details = message_body[len("register:"):].split(",")
-                name = details[0].strip().title()
-                latitude = float(details[1].strip())
-                longitude = float(details[2].strip())
-                favorite_surfspots = details[3].strip()
-
-                save_user(from_number, name, latitude, longitude, favorite_surfspots)
-                response_message = f"🏄‍♂️ Hi {name}, you're registered successfully!"
-
-            except Exception as e:
-                print("Register error:", e)
+                lat, lon = map(float, message_body.split(","))
+                update_user_field(from_number, "latitude", lat)
+                update_user_field(from_number, "longitude", lon)
+                set_registration_state(from_number, "awaiting_spot")
                 response_message = (
-                    "⚠️ Registration failed. Use:\n"
-                    "`register:Name,lat,long,spot`\n"
-                    "Example:\n`register:John,28.6448,77.2167,Malibu`"
+                    "📍 Location saved.\nNow tell us your *favorite surf spot*:"
                 )
+            except:
+                response_message = "⚠️ Invalid format. Send location like: `28.6448,77.2167`"
 
-        elif message_body.startswith("prefs:"):
-            try:
-                prefs_raw = message_body[len("prefs:"):].split(",")
-                prefs_dict = {}
-                for pref in prefs_raw:
-                    if "=" in pref and "-" in pref:
-                        key, val = pref.split("=")
-                        min_val, max_val = map(float, val.split("-"))
-                        prefs_dict[f"{key.strip()}_min"] = min_val
-                        prefs_dict[f"{key.strip()}_max"] = max_val
+        elif user and user.get("registration_state") == "awaiting_spot":
+            update_user_field(from_number, "favorite_surfspots", message_body.strip())
+            set_registration_state(from_number, "completed")
+            response_message = (
+                "🌊 Surf spot saved!\n✅ You're now registered.\n"
+                "You can now set your preferences like:\n"
+                "`prefs: swellHeight=0.5-2, windSpeed=3-8`"
+            )
 
-                update_user_preferences(from_number, prefs_dict)
-                response_message = "✅ Preferences updated successfully!"
+        elif message_body.lower().startswith("prefs:"):
+            if not user or user.get("registration_state") != "completed":
+                response_message = "⚠️ You need to complete registration first. Send `register now`."
+            else:
+                try:
+                    prefs_raw = message_body[len("prefs:"):].split(",")
+                    prefs_dict = {}
+                    for pref in prefs_raw:
+                        if "=" in pref and "-" in pref:
+                            key, val = pref.split("=")
+                            min_val, max_val = map(float, val.split("-"))
+                            prefs_dict[f"{key.strip()}_min"] = min_val
+                            prefs_dict[f"{key.strip()}_max"] = max_val
 
-            except Exception as e:
-                print("Prefs error:", e)
-                response_message = (
-                    "⚠️ Error in saving preferences.\n"
-                    "Use format like:\n"
-                    "`prefs: swellHeight=0.5-2, windSpeed=3-8`\n\n"
-                    "📊 Available preference keys:\n"
-                    "- swellHeight\n"
-                    "- swellPeriod\n"
-                    "- swellDirection\n"
-                    "- secondarySwellHeight\n"
-                    "- secondarySwellPeriod\n"
-                    "- secondarySwellDirection\n"
-                    "- windSpeed\n"
-                    "- windDirection\n"
-                    "\nEach should be in `min-max` format."
-                )
+                    update_user_preferences(from_number, prefs_dict)
+                    response_message = "✅ Preferences updated successfully!"
+                except Exception as e:
+                    print("Prefs error:", e)
+                    response_message = (
+                        "⚠️ Error in saving preferences.\n"
+                        "Use format like:\n"
+                        "`prefs: swellHeight=0.5-2, windSpeed=3-8`"
+                    )
 
-        elif message_body in ["hi", "hello", "help"]:
+        elif message_body.lower() in ["hi", "hello", "help"]:
             response_message = (
                 "👋 Welcome! Here's what you can do:\n"
-                "- `register:Name,lat,long,spot`\n"
+                "- `register now` to begin onboarding\n"
                 "- `prefs: key1=min-max, key2=min-max`\n"
                 "Example:\n`prefs: swellHeight=0.5-2, windSpeed=3-8`"
             )
 
         else:
-            response_message = (
-                "🤖 Unknown command.\n"
-                "Send `help` for instructions."
-            )
+            response_message = "🤖 Unknown command. Send `help` for options."
 
         twilio_client.messages.create(
             body=response_message,
@@ -137,19 +123,52 @@ def whatsapp_webhook():
         print("Webhook error:", e)
         return jsonify({"error": str(e)}), 500
 
-def save_user(phone, name, lat, lon, fav_spots):
+
+# DB Functions
+def get_user(phone):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cursor.execute("SELECT * FROM users WHERE phone = %s;", (phone,))
+        return cursor.fetchone()
+    finally:
+        cursor.close()
+        conn.close()
+
+def create_or_reset_user(phone):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            INSERT INTO users (phone, name, latitude, longitude, favorite_surfspots)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO users (phone, registration_state)
+            VALUES (%s, %s)
             ON CONFLICT (phone) DO UPDATE
-            SET name = EXCLUDED.name,
-                latitude = EXCLUDED.latitude,
-                longitude = EXCLUDED.longitude,
-                favorite_surfspots = EXCLUDED.favorite_surfspots;
-        """, (phone, name, lat, lon, fav_spots))
+            SET registration_state = EXCLUDED.registration_state,
+                name = NULL,
+                latitude = NULL,
+                longitude = NULL,
+                favorite_surfspots = NULL;
+        """, (phone, "awaiting_name"))
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+
+def set_registration_state(phone, state):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE users SET registration_state = %s WHERE phone = %s;", (state, phone))
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+
+def update_user_field(phone, field, value):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(f"UPDATE users SET {field} = %s WHERE phone = %s;", (value, phone))
         conn.commit()
     finally:
         cursor.close()
