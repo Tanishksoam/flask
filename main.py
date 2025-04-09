@@ -55,17 +55,27 @@ def whatsapp_webhook():
                 "Example: `28.6448,77.2167`"
             )
 
+
         elif user and user.get("registration_state") == "awaiting_location":
-            try:
-                lat, lon = map(float, message_body.split(","))
-                update_user_field(from_number, "latitude", lat)
-                update_user_field(from_number, "longitude", lon)
-                set_registration_state(from_number, "awaiting_spot")
+            lat = request.form.get("Latitude")
+            lon = request.form.get("Longitude")
+
+            if lat and lon:
+                try:
+                    lat = float(lat)
+                    lon = float(lon)
+                    update_user_field(from_number, "latitude", lat)
+                    update_user_field(from_number, "longitude", lon)
+                    set_registration_state(from_number, "awaiting_spot")
+                    response_message = (
+                        "📍 Location saved.\nNow tell us your *favorite surf spot*:"
+                    )
+                except:
+                    response_message = "⚠️ Could not parse location. Please send again."
+            else:
                 response_message = (
-                    "📍 Location saved.\nNow tell us your *favorite surf spot*:"
+                    "📍 Please send your *live location* using WhatsApp’s location feature."
                 )
-            except:
-                response_message = "⚠️ Invalid format. Send location like: `28.6448,77.2167`"
 
         elif user and user.get("registration_state") == "awaiting_spot":
             update_user_field(from_number, "favorite_surfspots", message_body.strip())
