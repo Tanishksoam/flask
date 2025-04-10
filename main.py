@@ -116,14 +116,23 @@ def whatsapp_webhook():
                         "`prefs: swellHeight=0.5-2, windSpeed=3-8`"
                     )
 
-        elif message_body.lower() in ["hi", "hello", "help"]:
+        elif message_body.lower() in ["hi", "hello"]:
             response_message = (
-                "👋 Welcome! Here's what you can do:\n"
-                "- `register now` to begin onboarding\n"
-                "- `prefs: key1=min-max, key2=min-max`\n"
-                "Example:\n`prefs: swellHeight=0.5-2, windSpeed=3-8`"
+                "👋 Hey there! I'm your Surf Buddy 🌊\n"
+                "You can get started by typing:\n"
+                "`register now` – to begin your journey to perfect waves!\n"
+                "Need help? Just say `help` 🤝"
             )
 
+        elif message_body.lower() == "help":
+            response_message = (
+                "🆘 *Help Menu* – Here's what I can do:\n\n"
+                "📌 `register now` – Start the onboarding process\n"
+                "📍 Share location – To get surf spots near you\n"
+                "🏄 Select surf spot – Choose your fav break\n"
+                "⚙️ `prefs: swellHeight=0.5-2, windSpeed=3-8` – Set wave/wind preferences\n"
+                "ℹ️ For more support, reply `support`"
+            )
         else:
             response_message = "🤖 Unknown command. Send `help` for options."
 
