@@ -79,13 +79,19 @@ def whatsapp_webhook():
 
         elif user and user.get("registration_state") == "awaiting_spot":
             update_user_field(from_number, "favorite_surfspots", message_body.strip())
-            set_registration_state(from_number, "completed")
-            response_message = (
-                "🌊 Surf spot saved!\n✅ You're now registered.\n"
-                "You can now set your preferences like:\n"
-                "`prefs: swellHeight=0.5-2, windSpeed=3-8`"
-            )
-
+            spots = get_nearby_surf_spots(lat, lon)
+            if spots:
+                spots_str = "\n".join([f"{i+1}. {spot}" for i, spot in enumerate(spots)])
+                set_registration_state(from_number, "awaiting_spot")
+                update_user_field(from_number, "nearby_spots", ", ".join(spots))  # Optional: store for reference
+                response_message = (
+                    "📍 Location saved.\nPlease choose your *favorite surf spot* by typing its name:\n"
+                    f"{spots_str}"
+                )
+            else:
+                response_message = (
+                    "⚠️ No surf spots found near your location. Please try a different location."
+                )
         elif message_body.lower().startswith("prefs:"):
             if not user or user.get("registration_state") != "completed":
                 response_message = "⚠️ You need to complete registration first. Send `register now`."
@@ -183,6 +189,31 @@ def update_user_field(phone, field, value):
     finally:
         cursor.close()
         conn.close()
+
+def get_nearby_surf_spots(lat, lon, limit=5):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT name FROM surf_spots
+            WHERE latitude IS NOT NULL 
+              AND longitude IS NOT NULL 
+              AND longitude::text ~ '^[+-]?[0-9]+(\\.[0-9]*)?$'
+              AND ST_DistanceSphere(
+                    ST_MakePoint(longitude, latitude),
+                    ST_MakePoint(%s, %s)
+                  ) <= 200000
+            ORDER BY ST_DistanceSphere(
+                ST_MakePoint(longitude, latitude),
+                ST_MakePoint(%s, %s)
+            )
+            LIMIT %s;
+        """, (lon, lat, lon, lat, limit))
+        return [row["name"] for row in cursor.fetchall()]
+    finally:
+        cursor.close()
+        conn.close()
+
 
 def update_user_preferences(phone, prefs):
     conn = get_db_connection()
