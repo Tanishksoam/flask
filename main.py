@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import json
 
 app = Flask(__name__)
 load_dotenv()
@@ -46,7 +47,7 @@ def whatsapp_webhook():
             create_or_reset_user(from_number)
             set_registration_state(from_number, "awaiting_name")
             response_message = "👋 Great! Let's get you registered.\nPlease enter your *name*:"
-        
+
         elif user and user.get("registration_state") == "awaiting_name":
             update_user_field(from_number, "name", message_body.title())
             set_registration_state(from_number, "awaiting_location")
@@ -55,43 +56,42 @@ def whatsapp_webhook():
                 "Example: `28.6448,77.2167`"
             )
 
-
         elif user and user.get("registration_state") == "awaiting_location":
-            lat = request.form.get("Latitude")
-            lon = request.form.get("Longitude")
-
-            if lat and lon:
-                try:
-                    lat = float(lat)
-                    lon = float(lon)
-                    update_user_field(from_number, "latitude", lat)
-                    update_user_field(from_number, "longitude", lon)
+            try:
+                lat, lon = map(float, message_body.split(","))
+                update_user_field(from_number, "latitude", lat)
+                update_user_field(from_number, "longitude", lon)
+                spots = get_nearby_surf_spots(lat, lon)
+                if spots:
+                    numbered_spots = "\n".join([f"{i+1}. {spot}" for i, spot in enumerate(spots)])
                     set_registration_state(from_number, "awaiting_spot")
+                    update_user_field(from_number, "temp_spots", ",".join(spots))
                     response_message = (
-                        "📍 Location saved.\nNow tell us your *favorite surf spot*:"
+                        "🌊 Great! Based on your location, here are nearby surf spots:\n"
+                        f"{numbered_spots}\n\n"
+                        "Please reply with the *number* of your favorite surf spot."
                     )
-                except:
-                    response_message = "⚠️ Could not parse location. Please send again."
-            else:
-                response_message = (
-                    "📍 Please send your *live location* using WhatsApp’s location feature."
-                )
+                else:
+                    response_message = "⚠️ No surf spots found near your location. Try a different one."
+            except:
+                response_message = "⚠️ Invalid location format. Send like `28.6448,77.2167`"
 
         elif user and user.get("registration_state") == "awaiting_spot":
-            update_user_field(from_number, "favorite_surfspots", message_body.strip())
-            spots = get_nearby_surf_spots(lat, lon)
-            if spots:
-                spots_str = "\n".join([f"{i+1}. {spot}" for i, spot in enumerate(spots)])
-                set_registration_state(from_number, "awaiting_spot")
-                update_user_field(from_number, "nearby_spots", ", ".join(spots))  # Optional: store for reference
-                response_message = (
-                    "📍 Location saved.\nPlease choose your *favorite surf spot* by typing its name:\n"
-                    f"{spots_str}"
-                )
-            else:
-                response_message = (
-                    "⚠️ No surf spots found near your location. Please try a different location."
-                )
+            try:
+                index = int(message_body.strip()) - 1
+                temp_spots = user.get("temp_spots", "")
+                spot_list = [s.strip() for s in temp_spots.split(",") if s.strip()]
+                if 0 <= index < len(spot_list):
+                    chosen_spot = spot_list[index]
+                    update_user_field(from_number, "favorite_surfspots", chosen_spot)
+                    set_registration_state(from_number, "completed")
+                    update_user_field(from_number, "temp_spots", None)
+                    response_message = f"🏄 Awesome! You've selected *{chosen_spot}*.\nYou're now registered!"
+                else:
+                    response_message = "❌ Invalid selection. Please reply with the correct number."
+            except:
+                response_message = "⚠️ Please reply with a valid number to select your surf spot."
+
         elif message_body.lower().startswith("prefs:"):
             if not user or user.get("registration_state") != "completed":
                 response_message = "⚠️ You need to complete registration first. Send `register now`."
@@ -140,7 +140,8 @@ def whatsapp_webhook():
         return jsonify({"error": str(e)}), 500
 
 
-# DB Functions
+# ------------------ Database Functions ------------------
+
 def get_user(phone):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -163,7 +164,8 @@ def create_or_reset_user(phone):
                 name = NULL,
                 latitude = NULL,
                 longitude = NULL,
-                favorite_surfspots = NULL;
+                favorite_surfspots = NULL,
+                temp_spots = NULL;
         """, (phone, "awaiting_name"))
         conn.commit()
     finally:
@@ -198,7 +200,6 @@ def get_nearby_surf_spots(lat, lon, limit=5):
             SELECT name FROM surf_spots
             WHERE latitude IS NOT NULL 
               AND longitude IS NOT NULL 
-              AND longitude::text ~ '^[+-]?[0-9]+(\\.[0-9]*)?$'
               AND ST_DistanceSphere(
                     ST_MakePoint(longitude, latitude),
                     ST_MakePoint(%s, %s)
@@ -213,7 +214,6 @@ def get_nearby_surf_spots(lat, lon, limit=5):
     finally:
         cursor.close()
         conn.close()
-
 
 def update_user_preferences(phone, prefs):
     conn = get_db_connection()
@@ -230,9 +230,11 @@ def update_user_preferences(phone, prefs):
         cursor.close()
         conn.close()
 
+
 @app.route("/")
 def home():
     return jsonify({"status": "WhatsApp onboarding running"}), 200
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.getenv("PORT", 8000)))
