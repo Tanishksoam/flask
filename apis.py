@@ -10,6 +10,6 @@ class TwilioClient:
     def send_whatsapp(self, to, body):
         self.client.messages.create(
             body=body,
-            from_=f"whatsapp:{self.number}",
-            to=f"whatsapp:{to}"
+            from_=f"{self.number}",
+            to=f"{to}"
         )
