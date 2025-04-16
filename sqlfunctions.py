@@ -11,6 +11,17 @@ def get_db_connection():
         password=os.getenv("PGPASSWORD")
     )
 
+def create_user(phone):
+    with get_db_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO users (phone, registration_state)
+                VALUES (%s, %s)
+                ON CONFLICT (phone) DO NOTHING;
+            """, (phone, 'awaiting_name'))
+            conn.commit()
+
+
 def get_user(phone):
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
