@@ -7,24 +7,26 @@ def is_authorized_number(phone):
     authorized = json.loads(os.getenv("AUTHORIZED_NUMBERS", "[]"))
     return f"{phone}" in authorized
 
-
-def handle_registration_flow(user, phone, message):
+def handle_registration_flow(user, phone, message, latitude=None, longitude=None):
     if message.lower() == "register now":
         create_user(phone)
         return "👋 Great! Let's get you registered.\nPlease enter your *name*:"
 
     if not user:
-        return "⚠️ Please start with *register now*"
-    
+        return "⚠️ Please start with `register now`"
+
     state = user.get('registration_state')
 
     if state == "awaiting_name":
         update_user(phone, {"name": message.title(), "registration_state": "awaiting_location"})
-        return "✅ Name saved.\nShare your *location* as `lat,long`\nEx: `28.6448,77.2167`"
-    
+        return "✅ Name saved.\nNow *share your location* using WhatsApp's attach menu 📎"
+
     if state == "awaiting_location":
+        if not latitude or not longitude:
+            return "📍 Please share your location using WhatsApp's attach menu."
         try:
-            lat, lon = map(float, message.split(','))
+            lat = float(latitude)
+            lon = float(longitude)
             spots = get_nearby_spots(lat, lon)
             update_user(phone, {
                 "latitude": lat,
@@ -35,8 +37,8 @@ def handle_registration_flow(user, phone, message):
             spots_list = "\n".join([f"{i+1}. {s}" for i, s in enumerate(spots)])
             return f"🌊 Nearby surf spots:\n{spots_list}\nReply with spot number"
         except:
-            return "⚠️ Invalid location format. Send like `28.6448,77.2167`"
-    
+            return "⚠️ Could not process location. Try again."
+
     if state == "awaiting_spot":
         try:
             index = int(message) - 1
@@ -46,11 +48,12 @@ def handle_registration_flow(user, phone, message):
                 "registration_state": "completed",
                 "temp_spots": None
             })
-            return f"🏄 Awesome! You've selected *{spots[index]}*!"
+            return f"🏄 Awesome! You've selected {spots[index]}!"
         except:
             return "❌ Invalid selection. Please reply with the correct number."
-    
+
     return handle_commands(message, user)
+
 
 def handle_commands(message, user):
     msg = message.lower()

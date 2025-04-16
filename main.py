@@ -14,19 +14,19 @@ def whatsapp_webhook():
         data = request.form
         from_number = data.get("From")
         message_body = data.get("Body", "").strip()
-
-        # Optional authorization
-        # if not is_authorized_number(from_number):
-        #     return jsonify({"error": "Unauthorized"}), 403
+        latitude = data.get("Latitude")
+        longitude = data.get("Longitude")
 
         user = get_user(from_number)
-        response = handle_registration_flow(user, from_number, message_body)
+
+        response = handle_registration_flow(user, from_number, message_body, latitude, longitude)
         
         twilio.send_whatsapp(from_number, response)
         return jsonify({"status": "success"}), 200
     except Exception as e:
         print(f"Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/")
 def home():
