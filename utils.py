@@ -5,7 +5,7 @@ from sqlfunctions import get_user, update_user, get_nearby_spots
 
 def is_authorized_number(phone):
     authorized = json.loads(os.getenv("AUTHORIZED_NUMBERS", "[]"))
-    return f"whatsapp:{phone}" in authorized
+    return f"{phone}" in authorized
 
 def handle_registration_flow(user, phone, message):
     msg = message.lower()

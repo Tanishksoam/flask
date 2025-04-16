@@ -12,7 +12,7 @@ twilio = TwilioClient()
 def whatsapp_webhook():
     try:
         data = request.form
-        from_number = data.get("From").replace("whatsapp:", "")
+        from_number = data.get("From")
         message_body = data.get("Body", "").strip()
 
         # Optional authorization
