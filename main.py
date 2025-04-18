@@ -31,8 +31,10 @@ def whatsapp_webhook():
         return jsonify({"status": "success"}), 200
     
     except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        print(f"CRITICAL ERROR: {str(e)}")
+        print(f"Request data: {dict(request.form)}")
+        return jsonify({"error": "Internal server error"}), 500
+    
 
 @app.route("/")
 def health_check():

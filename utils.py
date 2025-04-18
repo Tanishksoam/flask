@@ -3,30 +3,33 @@ import json
 from sqlfunctions import get_user, update_user, get_nearby_spots, create_user
 
 def handle_registration_flow(user, phone, message, latitude=None, longitude=None):
-    # Initial registration trigger
-    if not user and message.lower() == "register now":
-        create_user(phone)
-        return registration_step("awaiting_name")
-    
-    if not user:
-        return registration_step("welcome")
-    
-    state = user.get('registration_state', 'welcome')
-    
-    # Registration steps
-    if state == "awaiting_name":
-        return handle_name(phone, message)
-    
-    if state == "awaiting_location":
-        return handle_location(phone, message, latitude, longitude)
-    
-    if state == "awaiting_spot":
-        return handle_spot_selection(phone, user, message)
-    
-    if state.startswith("preference_"):
-        return handle_preference(phone, user, message, state)
-    
-    return handle_command(message)
+    try:
+        if not user and message.lower() == "register now":
+            create_user(phone)
+            return registration_step("awaiting_name")
+        
+        if not user:
+            return registration_step("welcome")
+        
+        state = user.get('registration_state', 'welcome')
+        
+        # Registration steps
+        if state == "awaiting_name":
+            return handle_name(phone, message)
+        
+        if state == "awaiting_location":
+            return handle_location(phone, message, latitude, longitude)
+        
+        if state == "awaiting_spot":
+            return handle_spot_selection(phone, user, message)
+        
+        if state.startswith("preference_"):
+            return handle_preference(phone, user, message, state)
+        
+        return handle_command(message)
+    except Exception as e:
+        print(f"Error in registration flow: {e}")
+        return "⚠️ An error occurred. Please try again later."
 
 def registration_step(step):
     steps = {
