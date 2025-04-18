@@ -88,18 +88,19 @@ def handle_location(phone, message, lat, lon):
     try:
         lat = float(lat)
         lon = float(lon)
-        spots = get_nearby_spots(lat, lon)
+        # spots = get_nearby_spots(lat, lon)
         
-        if not spots:
-            return "⚠️ No surf spots found nearby. Please share a different location"
+        # if not spots:
+        #     return "⚠️ No surf spots found nearby. Please share a different location"
         
-        update_user(phone, {
-            "latitude": lat,
-            "longitude": lon,
-            "temp_spots": json.dumps(spots),
-            "registration_state": "awaiting_spot"
-        })
-        return registration_step("awaiting_spot")(spots)
+        # update_user(phone, {
+        #     "latitude": lat,
+        #     "longitude": lon,
+        #     "temp_spots": json.dumps(spots),
+        #     "registration_state": "awaiting_spot"
+        # })
+        # return registration_step("awaiting_spot")(spots)
+        return f"⚠️ No surf spots found nearby. Please share a different location, lat: {lat}, lon: {lon}"
     except:
         return "⚠️ Invalid location. Please use the location button"
 
