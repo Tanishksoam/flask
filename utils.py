@@ -5,7 +5,7 @@ from sqlfunctions import get_user, update_user, get_nearby_spots, create_user
 def handle_registration_flow(user, phone, message):
     try:
         if not user and message.lower() == "register now":
-            #create_user(phone)
+            create_user(phone)
             return registration_step("awaiting_name")
         
         if not user:

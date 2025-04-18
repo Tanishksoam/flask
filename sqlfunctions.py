@@ -11,25 +11,34 @@ def get_db_connection():
         dbname=os.getenv("POSTGRES_DB"),
         user=os.getenv("PGUSER"),
         password=os.getenv("PGPASSWORD"),
-        connect_timeout=5
+        connect_timeout=10
     )
 
 def create_user(phone):
     try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                    INSERT INTO users (phone, registration_state)
-                    VALUES (%s, 'awaiting_name')
-                    ON CONFLICT (phone) DO UPDATE SET
-                        registration_state = EXCLUDED.registration_state,
-                        updated_at = NOW()
-                """, (phone,))
-                conn.commit()
-                print(f"User {phone} created/updated")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO users (phone, registration_state)
+            VALUES (%s, 'awaiting_name')
+            ON CONFLICT (phone) DO UPDATE 
+            SET registration_state = EXCLUDED.registration_state,
+                updated_at = NOW()
+        """, (phone,))
+
+        conn.commit()
+        print(f"User {phone} created/updated")
+
     except Exception as e:
-        print(f"Error creating user: {str(e)}")
+        print(f"Error creating user: {e}")
         raise
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def get_user(phone):
     with get_db_connection() as conn:
