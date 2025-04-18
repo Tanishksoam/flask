@@ -1,5 +1,7 @@
 import os
 import psycopg2
+import json
+from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
 
 def get_db_connection():
@@ -8,7 +10,8 @@ def get_db_connection():
         port=os.getenv("PGPORT"),
         dbname=os.getenv("POSTGRES_DB"),
         user=os.getenv("PGUSER"),
-        password=os.getenv("PGPASSWORD")
+        password=os.getenv("PGPASSWORD"),
+        connect_timeout=5
     )
 
 def create_user(phone):
@@ -16,35 +19,56 @@ def create_user(phone):
         with conn.cursor() as cursor:
             cursor.execute("""
                 INSERT INTO users (phone, registration_state)
-                VALUES (%s, %s)
-                ON CONFLICT (phone) DO NOTHING;
-            """, (phone, 'awaiting_name'))
-            conn.commit()
-
+                VALUES (%s, 'awaiting_name')
+                ON CONFLICT (phone) DO UPDATE SET
+                    registration_state = EXCLUDED.registration_state,
+                    updated_at = NOW()
+            """, (phone,))
 
 def get_user(phone):
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-            cursor.execute("SELECT * FROM users WHERE phone = %s;", (phone,))
+            cursor.execute("""
+                SELECT * FROM users 
+                WHERE phone = %s;
+            """, (phone,))
             return cursor.fetchone()
 
 def update_user(phone, updates):
     with get_db_connection() as conn:
         with conn.cursor() as cursor:
-            set_clause = ", ".join([f"{k} = %s" for k in updates])
-            values = list(updates.values()) + [phone]
-            cursor.execute(f"UPDATE users SET {set_clause} WHERE phone = %s;", values)
-            conn.commit()
+            set_clause = sql.SQL(", ").join(
+                [sql.Identifier(k) + sql.SQL(" = %s") for k in updates]
+            )
+            query = sql.SQL("UPDATE users SET {fields} WHERE phone = %s").format(
+                fields=set_clause
+            )
+            cursor.execute(query, list(updates.values()) + [phone])
 
-def get_nearby_spots(lat, lon, radius=200000, limit=5):
+def get_nearby_spots(lat, lon, radius=20000, limit=5):
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute("""
-                SELECT name FROM surf_spots
-                WHERE ST_DistanceSphere(ST_MakePoint(longitude, latitude),
-                        ST_MakePoint(%s, %s)) <= %s
-                ORDER BY ST_DistanceSphere(ST_MakePoint(longitude, latitude),
-                        ST_MakePoint(%s, %s))
+                SELECT 
+                    spot_name as name, 
+                    url,
+                    ST_DistanceSphere(
+                        ST_MakePoint(%s, %s),
+                        ST_MakePoint(longitude, latitude)
+                    ) AS distance
+                FROM surf_spots
+                WHERE ST_DWithin(
+                    ST_MakePoint(longitude, latitude)::geography,
+                    ST_MakePoint(%s, %s)::geography,
+                    %s
+                )
+                ORDER BY distance
                 LIMIT %s;
-            """, (lon, lat, radius, lon, lat, limit))
-            return [row["name"] for row in cursor.fetchall()]
+            """, (lon, lat, lon, lat, radius, limit))
+            return cursor.fetchall()
+
+def get_all_users():
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute("SELECT * FROM users WHERE registration_state = 'completed'")
+            return cursor.fetchall()

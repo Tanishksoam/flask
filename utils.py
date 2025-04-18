@@ -1,75 +1,164 @@
-import json
 import os
-from sqlfunctions import get_user, update_user, get_nearby_spots
-from sqlfunctions import create_user as db_create_user
-
-def is_authorized_number(phone):
-    authorized = json.loads(os.getenv("AUTHORIZED_NUMBERS", "[]"))
-    return f"{phone}" in authorized
+import json
+from sqlfunctions import get_user, update_user, get_nearby_spots, create_user
 
 def handle_registration_flow(user, phone, message, latitude=None, longitude=None):
-    if message.lower() == "register now":
+    # Initial registration trigger
+    if not user and message.lower() == "register now":
         create_user(phone)
-        return "👋 Great! Let's get you registered.\nPlease enter your *name*:"
-
+        return registration_step("awaiting_name")
+    
     if not user:
-        return "⚠️ Please start with `register now`"
-
-    state = user.get('registration_state')
-
+        return registration_step("welcome")
+    
+    state = user.get('registration_state', 'welcome')
+    
+    # Registration steps
     if state == "awaiting_name":
-        update_user(phone, {"name": message.title(), "registration_state": "awaiting_location"})
-        return "✅ Name saved.\nNow *share your location* using WhatsApp's attach menu 📎"
-
+        return handle_name(phone, message)
+    
     if state == "awaiting_location":
-        if not latitude or not longitude:
-            return "📍 Please share your location using WhatsApp's attach menu."
-        try:
-            lat = float(latitude)
-            lon = float(longitude)
-            spots = get_nearby_spots(lat, lon)
-            update_user(phone, {
-                "latitude": lat,
-                "longitude": lon,
-                "temp_spots": ",".join(spots),
-                "registration_state": "awaiting_spot"
-            })
-            spots_list = "\n".join([f"{i+1}. {s}" for i, s in enumerate(spots)])
-            return f"🌊 Nearby surf spots:\n{spots_list}\nReply with spot number"
-        except:
-            return "⚠️ Could not process location. Try again."
-
+        return handle_location(phone, message, latitude, longitude)
+    
     if state == "awaiting_spot":
-        try:
-            index = int(message) - 1
-            spots = user['temp_spots'].split(',')
+        return handle_spot_selection(phone, user, message)
+    
+    if state.startswith("preference_"):
+        return handle_preference(phone, user, message, state)
+    
+    return handle_command(message)
+
+def registration_step(step):
+    steps = {
+        "welcome": (
+            "🌊 Welcome to Surf Alert Bot!\n"
+            "You're not registered. Type *register now* to start!"
+        ),
+        "awaiting_name": "👋 Please enter your full name:",
+        "awaiting_location": (
+            "📍 Please share your location using WhatsApp's location button 📎\n"
+            "(Tap the clip icon > Location > Share Live Location)"
+        ),
+        "awaiting_spot": lambda spots: (
+            "🏄 Nearby Surf Spots (20km radius):\n" +
+            "\n".join([f"{idx+1}. {s['name']} ({s['distance']:.1f}m)" 
+                      for idx, s in enumerate(spots)]) +
+            "\n\nReply with the spot number:"
+        ),
+        "preference_swell_dir": (
+            "🌊 Set Swell Direction Preferences (0-360 degrees)\n"
+            "Format: *min,max*\nExample: 180,220"
+        ),
+        "preference_swell_height": (
+            "🌊 Set Swell Height Preferences (meters)\n"
+            "Format: *min,max*\nExample: 1.5,3.0"
+        ),
+        "preference_swell_period": (
+            "🌊 Set Swell Period Preferences (seconds)\n"
+            "Format: *min,max*\nExample: 8,15"
+        ),
+        "preference_wind_speed": (
+            "🌬 Set Wind Speed Preferences (m/s)\n"
+            "Format: *min,max*\nExample: 2,8"
+        ),
+        "completed": (
+            "✅ Registration Complete!\n"
+            "You'll receive alerts when conditions match your preferences!\n"
+            "Type *help* for commands"
+        )
+    }
+    return steps[step] if not callable(steps[step]) else steps[step]
+
+def handle_name(phone, message):
+    if len(message.strip().split()) < 2:
+        return "⚠️ Please enter your full name (first and last name)"
+    
+    update_user(phone, {
+        "name": message.title(),
+        "registration_state": "awaiting_location"
+    })
+    return registration_step("awaiting_location")
+
+def handle_location(phone, message, lat, lon):
+    if not (lat and lon):
+        return registration_step("awaiting_location")
+    
+    try:
+        lat = float(lat)
+        lon = float(lon)
+        spots = get_nearby_spots(lat, lon)
+        
+        if not spots:
+            return "⚠️ No surf spots found nearby. Please share a different location"
+        
+        update_user(phone, {
+            "latitude": lat,
+            "longitude": lon,
+            "temp_spots": json.dumps(spots),
+            "registration_state": "awaiting_spot"
+        })
+        return registration_step("awaiting_spot")(spots)
+    except:
+        return "⚠️ Invalid location. Please use the location button"
+
+def handle_spot_selection(phone, user, message):
+    try:
+        spots = json.loads(user['temp_spots'])
+        index = int(message) - 1
+        
+        if 0 <= index < len(spots):
             update_user(phone, {
-                "favorite_surfspots": spots[index],
-                "registration_state": "completed",
+                "favorite_surfspots": spots[index]['url'],
+                "registration_state": "preference_swell_dir",
                 "temp_spots": None
             })
-            return f"🏄 Awesome! You've selected {spots[index]}!"
-        except:
-            return "❌ Invalid selection. Please reply with the correct number."
+            return registration_step("preference_swell_dir")
+        raise ValueError
+    except:
+        return "❌ Invalid selection. Please choose a valid number"
 
-    return handle_commands(message, user)
+def handle_preference(phone, user, message, state):
+    try:
+        field = state.split('_')[1]
+        min_val, max_val = map(float, message.split(','))
+        
+        if min_val > max_val:
+            return "⚠️ Min must be less than max. Try again"
+        
+        update_user(phone, {
+            f"{field}_min": min_val,
+            f"{field}_max": max_val,
+            "registration_state": get_next_preference_state(field)
+        })
+        
+        if field == "wind_speed":
+            update_user(phone, {"registration_state": "completed"})
+            return registration_step("completed")
+        
+        return registration_step(f"preference_{get_next_preference(field)}")
+    except:
+        return "⚠️ Invalid format. Use *min,max* numbers"
 
+def get_next_preference(current):
+    order = ['swell_dir', 'swell_height', 'swell_period', 'wind_speed']
+    try:
+        return order[order.index(current) + 1]
+    except IndexError:
+        return None
 
-def handle_commands(message, user):
+def handle_command(message):
     msg = message.lower()
-    if msg in ["hi", "hello", "hey"]:
-        return "👋 Hey there! Type *register now* to begin or *help* for options."
+    if msg in ['hi', 'hello', 'hey']:
+        return "👋 Welcome back! Type *help* for options"
     
-    if msg == "help":
+    if msg == 'help':
         return (
             "🆘 Help Menu:\n"
-            "• *register now*: Start registration\n"
-            "• *help*: Show available commands\n"
-            "• During registration, follow prompts like *name*, *lat,long*, etc."
+            "• *register now* - Start registration\n"
+            "• *my spot* - Show current surf spot\n"
+            "• *update prefs* - Update preferences\n"
+            "• *status* - Check alert status\n"
+            "• *help* - Show this menu"
         )
     
-    return "🤖 Unknown command. Send *help* for options."
-
-
-def create_user(phone):
-    db_create_user(phone)
+    return "🤖 Sorry, I didn't understand that. Type *help* for options"

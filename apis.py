@@ -5,11 +5,11 @@ class TwilioClient:
     def __init__(self):
         self.client = Client(os.getenv("TWILIO_ACCOUNT_SID"), 
                            os.getenv("TWILIO_AUTH_TOKEN"))
-        self.number = os.getenv("TWILIO_WHATSAPP_NUMBER")
+        self.number = f"whatsapp:{os.getenv('TWILIO_WHATSAPP_NUMBER')}"
     
     def send_whatsapp(self, to, body):
         self.client.messages.create(
             body=body,
-            from_=f"{self.number}",
-            to=f"{to}"
+            from_=self.number,
+            to=f"whatsapp:{to}"
         )
