@@ -11,9 +11,10 @@ twilio = TwilioClient()
 def whatsapp_webhook():
     try:
         data = request.form
-        from_number = data.get("From").split(':')[-1]  # Extract phone number
+        from_number = data.get("From").split(':')[-1]
         message = data.get("Body", "").strip()
-        
+        lat = data.get("Latitude")
+        lon = data.get("Longitude")
 
         formatted_phone = f"whatsapp:{from_number}"
         user = get_user(formatted_phone)
@@ -21,11 +22,12 @@ def whatsapp_webhook():
         response = handle_registration_flow(
             user, 
             formatted_phone,
-            message
+            message,
+            lat,
+            lon
         )
         
         twilio.send_whatsapp(from_number, response)
-        twilio.send_whatsapp(from_number, message)
         return jsonify({"status": "success"}), 200
     
     except Exception as e:

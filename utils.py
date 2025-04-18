@@ -2,7 +2,7 @@ import os
 import json
 from sqlfunctions import get_user, update_user, get_nearby_spots, create_user
 
-def handle_registration_flow(user, phone, message):
+def handle_registration_flow(user, phone, message, lat=None, lon=None):
     try:
         if not user and message.lower() == "register now":
             create_user(phone)
@@ -17,7 +17,7 @@ def handle_registration_flow(user, phone, message):
             return handle_name(phone, message)
         
         if state == "awaiting_location":
-            return handle_location(phone, message)
+            return handle_location(phone, message, lat, lon)
         
         if state == "awaiting_spot":
             return handle_spot_selection(phone, user, message)
@@ -81,25 +81,25 @@ def handle_name(phone, message):
     })
     return registration_step("awaiting_location")
 
-def handle_location(phone, message):
-    # if not (lat and lon):
-    #     return registration_step("awaiting_location")
+def handle_location(phone, message, lat, lon):
+    if not (lat and lon):
+        return registration_step("awaiting_location")
     
     try:
-        # lat = float(lat)
-        # lon = float(lon)
-        # spots = get_nearby_spots(lat, lon)
+        lat = float(lat)
+        lon = float(lon)
+        spots = get_nearby_spots(lat, lon)
         
-        #if not spots:
-        return f"⚠️ No surf spots found nearby. Please share a different location, : {message}"
+        if not spots:
+            return "⚠️ No surf spots found nearby. Please share a different location"
         
-        # update_user(phone, {
-        #     "latitude": lat,
-        #     "longitude": lon,
-        #     "temp_spots": json.dumps(spots),
-        #     "registration_state": "awaiting_spot"
-        # })
-        # return registration_step("awaiting_spot")(spots)
+        update_user(phone, {
+            "latitude": lat,
+            "longitude": lon,
+            "temp_spots": json.dumps(spots),
+            "registration_state": "awaiting_spot"
+        })
+        return registration_step("awaiting_spot")(spots)
     except:
         return "⚠️ Invalid location. Please use the location button"
 
