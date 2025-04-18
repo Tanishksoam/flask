@@ -28,7 +28,7 @@ def handle_registration_flow(user, phone, message):
         return handle_command(message)
     except Exception as e:
         print(f"Error in registration flow: {e}")
-        return "⚠️ An error occurred. Please try again later."
+        return f"⚠️ An error occurred. Please try again later. {e}"
 
 def registration_step(step):
     steps = {
