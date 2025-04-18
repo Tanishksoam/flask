@@ -28,6 +28,7 @@ def whatsapp_webhook():
         )
         
         twilio.send_whatsapp(from_number, response)
+        twilio.send_whatsapp(from_number, f"🔄 Processing your request,{lat}  ,  {lon}")
         return jsonify({"status": "success"}), 200
     
     except Exception as e:
