@@ -16,7 +16,7 @@ def whatsapp_webhook():
         lat = data.get("Latitude")
         lon = data.get("Longitude")
 
-        formatted_phone = f"whatsapp:+{from_number}"
+        formatted_phone = f"whatsapp:{from_number}"
         user = get_user(formatted_phone)
         
         response = handle_registration_flow(
