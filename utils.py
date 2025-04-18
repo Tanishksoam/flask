@@ -82,13 +82,13 @@ def handle_name(phone, message):
     return registration_step("awaiting_location")
 
 def handle_location(phone, message):
-    if not (lat and lon):
-        return registration_step("awaiting_location")
+    # if not (lat and lon):
+    #     return registration_step("awaiting_location")
     
     try:
-        lat = float(lat)
-        lon = float(lon)
-        spots = get_nearby_spots(lat, lon)
+        # lat = float(lat)
+        # lon = float(lon)
+        # spots = get_nearby_spots(lat, lon)
         
         #if not spots:
         return f"⚠️ No surf spots found nearby. Please share a different location, : {message}"
