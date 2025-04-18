@@ -100,7 +100,7 @@ def handle_location(phone, message, lat, lon):
             "registration_state": "awaiting_spot"
         })
         return registration_step("awaiting_spot")(spots)
-        return f"⚠️ No surf spots found nearby. {spots}"
+        # return f"⚠️ No surf spots found nearby. {spots}"
     except:
         return "⚠️ Invalid location. Please use the location button"
 

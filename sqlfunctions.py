@@ -60,7 +60,7 @@ def update_user(phone, updates):
             )
             cursor.execute(query, list(updates.values()) + [phone])
 
-def get_nearby_spots(lat, lon, radius=500000, limit=5):
+def get_nearby_spots(lat, lon, radius=5000000, limit=5):
     query = """
     SELECT 
         spot_name, latitude, longitude, url,
@@ -69,7 +69,6 @@ def get_nearby_spots(lat, lon, radius=500000, limit=5):
     WHERE 
         latitude IS NOT NULL 
         AND longitude IS NOT NULL
-        AND longitude::text ~ '^[+-]?[0-9]+(\.[0-9]*)?$'
         AND ST_DistanceSphere(ST_MakePoint(longitude, latitude), ST_MakePoint(%s, %s)) <= %s
     ORDER BY distance
     LIMIT %s;
