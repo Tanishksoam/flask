@@ -33,12 +33,12 @@ def handle_registration_flow(user, phone, message, lat=None, lon=None):
 def registration_step(step):
     steps = {
         "welcome": (
-            "🌊 Welcome to Surf Alert Bot!\n"
+            "🌊 Welcome to Surf Alert Bot!22\n"
             "You're not registered. Type *register now* to start!"
         ),
-        "awaiting_name": "👋 Please enter your full name:",
+        "awaiting_name": "👋 Please enter your full name:22",
         "awaiting_location": (
-            "📍 Please share your location using WhatsApp's location button 📎\n"
+            "📍 Please share your location using WhatsApp's location button22 📎\n"
             "(Tap the clip icon > Location > Share Live Location)"
         ),
         "awaiting_spot": lambda spots: (
