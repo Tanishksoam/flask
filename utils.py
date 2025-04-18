@@ -2,10 +2,10 @@ import os
 import json
 from sqlfunctions import get_user, update_user, get_nearby_spots, create_user
 
-def handle_registration_flow(user, phone, message, latitude=None, longitude=None):
+def handle_registration_flow(user, phone, message):
     try:
         if not user and message.lower() == "register now":
-            create_user(phone)
+            #create_user(phone)
             return registration_step("awaiting_name")
         
         if not user:
@@ -13,12 +13,11 @@ def handle_registration_flow(user, phone, message, latitude=None, longitude=None
         
         state = user.get('registration_state', 'welcome')
         
-        # Registration steps
         if state == "awaiting_name":
             return handle_name(phone, message)
         
         if state == "awaiting_location":
-            return handle_location(phone, message, latitude, longitude)
+            return handle_location(phone, message)
         
         if state == "awaiting_spot":
             return handle_spot_selection(phone, user, message)
@@ -70,7 +69,7 @@ def registration_step(step):
             "Type *help* for commands"
         )
     }
-    return steps[step] if not callable(steps[step]) else steps[step]
+    return steps[step] #if not callable(steps[step]) else steps[step]
 
 def handle_name(phone, message):
     if len(message.strip().split()) < 2:
