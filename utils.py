@@ -88,7 +88,7 @@ def handle_location(phone, message, lat, lon):
     try:
         lat = float(lat)
         lon = float(lon)
-        # spots = get_nearby_spots(lat, lon)
+        spots = get_nearby_spots(lat, lon)
         
         # if not spots:
         #     return "⚠️ No surf spots found nearby. Please share a different location"
