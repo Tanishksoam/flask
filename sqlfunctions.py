@@ -60,7 +60,7 @@ def update_user(phone, updates):
             )
             cursor.execute(query, list(updates.values()) + [phone])
 
-def get_nearby_spots(lat, lon, radius=50000, limit=5):
+def get_nearby_spots(lat, lon, radius=500000, limit=5):
     query = """
     SELECT 
         spot_name, latitude, longitude, url,
