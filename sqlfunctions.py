@@ -88,7 +88,7 @@ def get_nearby_spots(lat, lon, radius=5000000, limit=5):
             } for row in rows]
     except Exception as e:
         print(f"Database Error: {e}")
-        return []
+        return [e]
     finally:
         if conn: conn.close()
 
