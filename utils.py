@@ -119,28 +119,41 @@ def handle_spot_selection(phone, user, message):
         raise ValueError
     except:
         return "❌ Invalid selection. Please choose a valid number"
+    
 
 def handle_preference(phone, user, message, state):
     try:
         field = state.split('_')[1]
-        min_val, max_val = map(float, message.split(','))
+        # Validate input format
+        parts = [part.strip() for part in message.split(',')]
+        if len(parts) != 2:
+            return "⚠️ Please enter exactly two values separated by a comma (e.g., min,max)"
+        
+        min_val, max_val = map(float, parts)
         
         if min_val > max_val:
             return "⚠️ Min must be less than max. Try again"
         
-        update_user(phone, {
-            f"{field}_min": min_val,
-            f"{field}_max": max_val,
-            "registration_state": get_next_preference_state(field)
-        })
+        # Determine next preference state
+        current_field = field
+        next_preference = get_next_preference(current_field)
         
-        if field == "wind_speed":
-            update_user(phone, {"registration_state": "completed"})
+        # Prepare updates
+        updates = {
+            f"{current_field}_min": min_val,
+            f"{current_field}_max": max_val,
+            "registration_state": f"preference_{next_preference}" if next_preference else "completed"
+        }
+        update_user(phone, updates)
+        
+        if not next_preference:
             return registration_step("completed")
-        
-        return registration_step(f"preference_{get_next_preference(field)}")
-    except:
-        return "⚠️ Invalid format. Use *min,max* numbers"
+        return registration_step(f"preference_{next_preference}") 
+    except ValueError as e:
+        return f"⚠️ Invalid number format. Use numbers like 1.5,3.0. Error: {str(e)}"
+    except Exception as e:
+        print(f"Error in handle_preference: {e}")
+        return f"⚠️ An error occurred. Please try again. {e}"
 
 def get_next_preference(current):
     order = ['swell_dir', 'swell_height', 'swell_period', 'wind_speed']
@@ -165,3 +178,10 @@ def handle_command(message):
         )
     
     return "🤖 Sorry, I didn't understand that. Type *help* for options"
+
+def get_next_preference(current):
+    order = ['swell_dir', 'swell_height', 'swell_period', 'wind_speed']
+    try:
+        return order[order.index(current) + 1]
+    except IndexError:
+        return None
