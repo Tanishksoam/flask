@@ -156,7 +156,7 @@ def handle_preference(phone, user, message, state):
         return f"⚠️ An error occurred. Please try again. {e}"
 
 def get_next_preference(current):
-    order = ['swell_dir', 'swell_height', 'swell_period', 'wind_speed']
+    order = ['swelldirection', 'swellheight', 'swellperiod', 'windspeed']
     try:
         return order[order.index(current) + 1]
     except IndexError:
