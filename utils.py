@@ -112,10 +112,10 @@ def handle_spot_selection(phone, user, message):
         if 0 <= index < len(spots):
             update_user(phone, {
                 "favorite_surfspots": spots[index]['url'],
-                "registration_state": "preference_swell_dir",
+                "registration_state": "preference_swelldirection",
                 "temp_spots": None
             })
-            return registration_step("preference_swell_dir")
+            return registration_step("preference_swelldirection")
         raise ValueError
     except:
         return "❌ Invalid selection. Please choose a valid number"
@@ -180,7 +180,7 @@ def handle_command(message):
     return "🤖 Sorry, I didn't understand that. Type *help* for options"
 
 def get_next_preference(current):
-    order = ['swell_dir', 'swell_height', 'swell_period', 'wind_speed']
+    order = ['swelldirection', 'swellheight', 'swellperiod', 'windspeed']
     try:
         return order[order.index(current) + 1]
     except IndexError:
