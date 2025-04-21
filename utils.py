@@ -47,19 +47,19 @@ def registration_step(step):
                       for idx, s in enumerate(spots)]) +
             "\n\nReply with the spot number:"
         ),
-        "preference_swell_dir": (
+        "preference_swelldirection": (
             "🌊 Set Swell Direction Preferences (0-360 degrees)\n"
             "Format: *min,max*\nExample: 180,220"
         ),
-        "preference_swell_height": (
+        "preference_swellheight": (
             "🌊 Set Swell Height Preferences (meters)\n"
             "Format: *min,max*\nExample: 1.5,3.0"
         ),
-        "preference_swell_period": (
+        "preference_swellperiod": (
             "🌊 Set Swell Period Preferences (seconds)\n"
             "Format: *min,max*\nExample: 8,15"
         ),
-        "preference_wind_speed": (
+        "preference_windspeed": (
             "🌬 Set Wind Speed Preferences (m/s)\n"
             "Format: *min,max*\nExample: 2,8"
         ),
