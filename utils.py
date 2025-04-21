@@ -150,7 +150,7 @@ def handle_preference(phone, user, message, state):
         return registration_step(f"preference_{next_preference}")
     
     except ValueError as e:
-        return "⚠️ Invalid number format. Use numbers like 180,220"
+        return f"⚠️ Invalid number format. Use numbers like 180,220. {e}"
     except Exception as e:
         print(f"Error in handle_preference: {e}")
         return f"⚠️ An error occurred. Please try again. {e}"
