@@ -153,7 +153,7 @@ def handle_preference(phone, user, message, state):
         return "⚠️ Invalid number format. Use numbers like 180,220"
     except Exception as e:
         print(f"Error in handle_preference: {e}")
-        return "⚠️ An error occurred. Please try again."
+        return f"⚠️ An error occurred. Please try again. {e}"
 
 def get_next_preference(current):
     order = ['swell_dir', 'swell_height', 'swell_period', 'wind_speed']
