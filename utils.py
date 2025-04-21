@@ -123,8 +123,8 @@ def handle_spot_selection(phone, user, message):
 
 def handle_preference(phone, user, message, state):
     try:
-        field = state.split('_')[1]
-        # Validate input format
+        field = '_'.join(state.split('_')[1:])  
+        
         parts = [part.strip() for part in message.split(',')]
         if len(parts) != 2:
             return "⚠️ Please enter exactly two values separated by a comma (e.g., min,max)"
@@ -135,25 +135,25 @@ def handle_preference(phone, user, message, state):
             return "⚠️ Min must be less than max. Try again"
         
         # Determine next preference state
-        current_field = field
-        next_preference = get_next_preference(current_field)
+        next_preference = get_next_preference(field)
         
         # Prepare updates
         updates = {
-            f"{current_field}_min": min_val,
-            f"{current_field}_max": max_val,
+            f"{field}_min": min_val,
+            f"{field}_max": max_val,
             "registration_state": f"preference_{next_preference}" if next_preference else "completed"
         }
         update_user(phone, updates)
         
         if not next_preference:
             return registration_step("completed")
-        return registration_step(f"preference_{next_preference}") 
+        return registration_step(f"preference_{next_preference}")
+    
     except ValueError as e:
-        return f"⚠️ Invalid number format. Use numbers like 1.5,3.0. Error: {str(e)}"
+        return "⚠️ Invalid number format. Use numbers like 180,220"
     except Exception as e:
         print(f"Error in handle_preference: {e}")
-        return f"⚠️ An error occurred. Please try again. {e}"
+        return "⚠️ An error occurred. Please try again."
 
 def get_next_preference(current):
     order = ['swell_dir', 'swell_height', 'swell_period', 'wind_speed']
