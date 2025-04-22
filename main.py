@@ -26,8 +26,6 @@ def whatsapp_webhook():
             lat,
             lon
         )
-        
-        # Handle different response types
         if response:
             if isinstance(response, tuple):
                 # Message with quick reply buttons

@@ -90,12 +90,16 @@ def handle_location(phone, message, lat, lon):
         if not spots:
             return "⚠️ No surf spots found nearby. Please share a different location"
         
-        # Send template instead of text message
+        # Send template with spots
         twilio = TwilioClient()
         twilio.send_surfspots_template(
-            to=phone.split(":")[-1],  # Extract phone number
+            to=phone.split(":")[-1],
             spots=spots
         )
+        
+        # Send instruction message
+        instruction = "Please select your preferred surf spot by replying with its number (ID) from the list above."
+        twilio.send_whatsapp(phone.split(":")[-1], instruction)
         
         update_user(phone, {
             "latitude": lat,
@@ -103,8 +107,7 @@ def handle_location(phone, message, lat, lon):
             "temp_spots": json.dumps(spots),
             "registration_state": "awaiting_spot"
         })
-        return None  # No text response needed
-        
+        return None  # No further response needed
     except Exception as e:
         print(f"Location Error: {e}")
         return "⚠️ Invalid location. Please use the location button"
@@ -113,18 +116,20 @@ def handle_location(phone, message, lat, lon):
 def handle_spot_selection(phone, user, message):
     try:
         spots = json.loads(user['temp_spots'])
-        index = int(message) - 1
+        selected_id = int(message)
+        selected_spot = next(spot for spot in spots if spot['id'] == selected_id)
         
-        if 0 <= index < len(spots):
-            update_user(phone, {
-                "favorite_surfspots": spots[index]['url'],
-                "registration_state": "preference_swelldirection",
-                "temp_spots": None
-            })
-            return registration_step("preference_swelldirection")
-        raise ValueError
-    except:
-        return "❌ Invalid selection. Please choose a valid number"
+        update_user(phone, {
+            "favorite_surfspots": selected_spot['url'],
+            "registration_state": "preference_swelldirection",
+            "temp_spots": None
+        })
+        return registration_step("preference_swelldirection")
+    except (ValueError, StopIteration):
+        return "❌ Invalid selection. Please choose a valid spot from the list."
+    except Exception as e:
+        print(f"Error in handle_spot_selection: {e}")
+        return f"⚠️ An error occurred. Please try again. error: {e}"
     
 
 def handle_preference(phone, user, message, state):
