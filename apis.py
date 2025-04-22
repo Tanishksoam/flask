@@ -16,10 +16,10 @@ class TwilioClient:
         }
         
         if actions:
-            # Create WhatsApp-compatible quick replies
+            # Format: quick_reply:unique_id:ButtonText (max 3 buttons)
             message_params['persistent_action'] = [
-                {"type": "quick_reply", "text": action_text}
-                for action_text in actions
+                f"quick_reply:{idx+1}:{action}" 
+                for idx, action in enumerate(actions[:3])  # Max 3 buttons
             ]
         
         self.client.messages.create(**message_params)

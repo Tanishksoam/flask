@@ -181,17 +181,17 @@ def handle_command(message):
     
     if msg == 'mood':
         return (
-            "How are you feeling today? 😊",  # Message
-            ["Good", "Neutral", "Not sure"]    # Three buttons
+            "How are you feeling today? 😊",
+            ["Good", "Neutral", "Not sure"]
         )
     
-    if msg == 'good':
+    if msg == 'good' or msg == 'Good':
         return "Your smile makes it better! 😊"
     
-    if msg == 'neutral':
+    if msg == 'neutral' or msg == 'Neutral':
         return "Let's find something to cheer you up! 🌞"
     
-    if msg == 'not sure':
+    if msg == 'not sure' or msg == 'Not sure':
         return "Take your time – I'm here when you need me 🤗"
     
     return "🤖 Sorry, I didn't understand that. Type *help* for options"
