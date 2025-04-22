@@ -12,7 +12,7 @@ def whatsapp_webhook():
     try:
         data = request.form
         from_number = data.get("From").split(':')[-1]
-        message = data.get("Body", "").strip()
+        message = data.get("Body", "").strip().lower()
         lat = data.get("Latitude")
         lon = data.get("Longitude")
 
