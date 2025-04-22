@@ -1,6 +1,7 @@
 import os
 import json
 from sqlfunctions import get_user, update_user, get_nearby_spots, create_user
+from apis import TwilioClient
 
 def handle_registration_flow(user, phone, message, lat=None, lon=None):
     try:
@@ -30,6 +31,7 @@ def handle_registration_flow(user, phone, message, lat=None, lon=None):
         print(f"Error in registration flow: {e}")
         return f"⚠️ An error occurred. Please try again later. {e}"
 
+
 def registration_step(step):
     steps = {
         "welcome": (
@@ -41,12 +43,7 @@ def registration_step(step):
             "📍 Please share your location using WhatsApp's location button22 📎\n"
             "(Tap the clip icon > Location > Share Live Location)"
         ),
-        "awaiting_spot": lambda spots: (
-            "🏄 Nearby Surf Spots (20km radius):\n" +
-            "\n".join([f"{idx+1}. {s['name']} ({s['distance']:.1f}m)" 
-                      for idx, s in enumerate(spots)]) +
-            "\n\nReply with the spot number:"
-        ),
+        # REMOVED: awaiting_spot entry (now handled by template)
         "preference_swelldirection": (
             "🌊 Set Swell Direction Preferences (0-360 degrees)\n"
             "Format: *min,max*\nExample: 180,220"
@@ -69,7 +66,7 @@ def registration_step(step):
             "Type *help* for commands"
         )
     }
-    return steps[step] #if not callable(steps[step]) else steps[step]
+    return steps[step]
 
 def handle_name(phone, message):
     if len(message.strip().split()) < 2:
@@ -93,16 +90,25 @@ def handle_location(phone, message, lat, lon):
         if not spots:
             return "⚠️ No surf spots found nearby. Please share a different location"
         
+        # Send template instead of text message
+        twilio = TwilioClient()
+        twilio.send_surfspots_template(
+            to=phone.split(":")[-1],  # Extract phone number
+            spots=spots
+        )
+        
         update_user(phone, {
             "latitude": lat,
             "longitude": lon,
             "temp_spots": json.dumps(spots),
             "registration_state": "awaiting_spot"
         })
-        return registration_step("awaiting_spot")(spots)
-        # return f"⚠️ No surf spots found nearby. {spots}"
-    except:
+        return None  # No text response needed
+        
+    except Exception as e:
+        print(f"Location Error: {e}")
         return "⚠️ Invalid location. Please use the location button"
+
 
 def handle_spot_selection(phone, user, message):
     try:

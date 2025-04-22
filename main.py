@@ -12,7 +12,7 @@ def whatsapp_webhook():
     try:
         data = request.form
         from_number = data.get("From").split(':')[-1]
-        message = data.get("Body", "").strip().lower()
+        message = data.get("Body", "").strip()  # Removed .lower() to preserve case for template responses
         lat = data.get("Latitude")
         lon = data.get("Longitude")
 
@@ -27,12 +27,15 @@ def whatsapp_webhook():
             lon
         )
         
-        # Handle tuple response (message + buttons)
-        if isinstance(response, tuple):
-            body, actions = response
-            twilio.send_whatsapp(from_number, body, actions)
-        else:
-            twilio.send_whatsapp(from_number, response)
+        # Handle different response types
+        if response:
+            if isinstance(response, tuple):
+                # Message with quick reply buttons
+                body, actions = response
+                twilio.send_whatsapp(from_number, body, actions)
+            else:
+                # Regular text message
+                twilio.send_whatsapp(from_number, response)
             
         return jsonify({"status": "success"}), 200
     
@@ -40,7 +43,6 @@ def whatsapp_webhook():
         print(f"CRITICAL ERROR: {str(e)}")
         print(f"Request data: {dict(request.form)}")
         return jsonify({"error": "Internal server error"}), 500
-    
 
 @app.route("/")
 def health_check():

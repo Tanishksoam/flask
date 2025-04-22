@@ -63,7 +63,7 @@ def update_user(phone, updates):
 def get_nearby_spots(lat, lon, radius=5000000, limit=5):
     query = """
     SELECT 
-        spot_name, latitude, longitude, url,
+        id,spot_name, latitude, longitude, url,
         ST_DistanceSphere(ST_MakePoint(longitude, latitude), ST_MakePoint(%s, %s)) AS distance
     FROM surf_spots
     WHERE 
@@ -80,11 +80,12 @@ def get_nearby_spots(lat, lon, radius=5000000, limit=5):
             cursor.execute(query, (lon, lat, lon, lat, radius, limit))
             rows = cursor.fetchall()
             return [{
-                "name": row[0],
-                "lat": row[1],
-                "lon": row[2],
-                "url": row[3],
-                "distance": round(row[4]/1000, 2)
+                "id": row[0],
+                "name": row[1],
+                "lat": row[2],
+                "lon": row[3],
+                "url": row[4],
+                "distance": round(row[5]/1000, 2)
             } for row in rows]
     except Exception as e:
         print(f"Database Error: {e}")
