@@ -27,7 +27,13 @@ def whatsapp_webhook():
             lon
         )
         
-        twilio.send_whatsapp(from_number, response)
+        # Handle tuple response (message + buttons)
+        if isinstance(response, tuple):
+            body, actions = response
+            twilio.send_whatsapp(from_number, body, actions)
+        else:
+            twilio.send_whatsapp(from_number, response)
+            
         return jsonify({"status": "success"}), 200
     
     except Exception as e:

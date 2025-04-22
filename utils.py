@@ -174,10 +174,25 @@ def handle_command(message):
             "• *my spot* - Show current surf spot\n"
             "• *update prefs* - Update preferences\n"
             "• *status* - Check alert status\n"
+            "• *mood* - Check your mood\n"  # Added mood command
             "• *help* - Show this menu"
         )
     
+    if msg == 'mood':
+        # Return message with buttons
+        return (
+            "How are you feeling? 😊",
+            ["Good", "Bad"]  # Buttons
+        )
+    
+    if msg == 'good':
+        return "Your smile makes it better! 😊"
+    
+    if msg == 'bad':
+        return "Try smiling, it makes the day better! ☀️"
+    
     return "🤖 Sorry, I didn't understand that. Type *help* for options"
+
 
 def get_next_preference(current):
     order = ['swelldirection', 'swellheight', 'swellperiod', 'windspeed']
