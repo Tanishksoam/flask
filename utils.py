@@ -133,7 +133,7 @@ def handle_spot_selection(phone, user, message):
         selected_spot = next((spot for spot in spots if spot['id'] == selected_id), None)
         if not selected_spot:
             valid_ids = ", ".join(str(spot['id']) for spot in spots)
-            return f"⚠️ Invalid ID. Choose from: {valid_ids}"
+            return f"⚠️ Invalid ID. Choose from: {valid_ids}. "
         
         update_user(phone, {
             "favorite_surfspots": selected_spot['url'],
@@ -144,7 +144,7 @@ def handle_spot_selection(phone, user, message):
     
     except Exception as e:
         print(f"Error in handle_spot_selection: {e}")
-        return f"⚠️ An error occurred. Please try again. Details: {str(e)}"
+        return f"⚠️ An error occurred. Please try again. Details: {str(e)}, spots"
     
 
 def handle_preference(phone, user, message, state):

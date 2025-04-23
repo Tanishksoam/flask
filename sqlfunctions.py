@@ -82,10 +82,10 @@ def get_nearby_spots(lat, lon, radius=5000000, limit=5):
             return [{
                 "id": row[0],
                 "name": row[1],
-                "lat": row[2],
-                "lon": row[3],
-                "url": row[4],
-                "distance": round(row[5]/1000, 2)
+                # "lat": row[2],
+                # "lon": row[3],
+                # "url": row[4],
+                # "distance": round(row[5]/1000, 2)
             } for row in rows]
     except Exception as e:
         print(f"Database Error: {e}")
