@@ -13,7 +13,8 @@ def handle_registration_flow(user, phone, message, lat=None, lon=None):
             return registration_step("welcome")
         
         state = user.get('registration_state', 'welcome')
-        
+        if state == "awaiting_spot" and (lat or lon):
+            return "⚠️ Please reply with the surf spot *number* (ID) from the list, not a location"
         if state == "awaiting_name":
             return handle_name(phone, message)
         
@@ -115,9 +116,22 @@ def handle_location(phone, message, lat, lon):
 
 def handle_spot_selection(phone, user, message):
     try:
+        # Handle empty message (location attachment case)
+        if not message.strip():
+            return "⚠️ Please reply with the surf spot *number* (ID) from the list above 🔢"
+        
+        # Handle non-numeric input
+        if not message.strip().isdigit():
+            return "⚠️ Please enter only the *number* (ID) from the list. Example: 42"
+        
         spots = json.loads(user['temp_spots'])
-        selected_id = int(message)
-        selected_spot = next(spot for spot in spots if spot['id'] == selected_id)
+        selected_id = int(message.strip())
+        
+        # Validate spot ID exists
+        selected_spot = next((spot for spot in spots if spot['id'] == selected_id), None)
+        if not selected_spot:
+            valid_ids = ", ".join(str(spot['id']) for spot in spots)
+            return f"⚠️ Invalid ID. Choose from: {valid_ids}"
         
         update_user(phone, {
             "favorite_surfspots": selected_spot['url'],
@@ -125,9 +139,10 @@ def handle_spot_selection(phone, user, message):
             "temp_spots": None
         })
         return registration_step("preference_swelldirection")
+    
     except Exception as e:
         print(f"Error in handle_spot_selection: {e}")
-        return f"⚠️ An error occurred. Please try again. error: {e}"
+        return f"⚠️ An error occurred. Please try again. Details: {str(e)}"
     
 
 def handle_preference(phone, user, message, state):
