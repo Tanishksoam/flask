@@ -39,5 +39,6 @@ class TwilioClient:
             from_=self.number,
             to=f"whatsapp:{to}",
             content_sid='HXe03f2a1f9eb40552f689bcbaaa015dd5',  # Your template SID
-            content_variables=json.dumps(variables)
+            # content_variables=json.dumps(variables)
+            content_variables='{"1": "Pipeline", "2": "123", "3": "Beach Break", "4": "456", "5": "Reef Point", "6": "789", "7": "Left Wall", "8": "101", "9": "Right Point", "10": "202"}'  # Example JSON string
         )
