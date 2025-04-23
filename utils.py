@@ -13,16 +13,15 @@ def handle_registration_flow(user, phone, message, lat=None, lon=None):
             return registration_step("welcome")
         
         state = user.get('registration_state', 'welcome')
-        if state == "awaiting_spot" and (lat or lon):
-            return "⚠️ Please reply with the surf spot *number* (ID) from the list, not a location"
+        
         if state == "awaiting_name":
             return handle_name(phone, message)
         
         if state == "awaiting_location":
             return handle_location(phone, message, lat, lon)
         
-        if state == "awaiting_spot":
-            return handle_spot_selection(phone, user, message)
+        if state == "awaiting_spot" and (lat or lon):
+            return handle_location(phone, message, lat, lon, is_retry=True)
         
         if state.startswith("preference_"):
             return handle_preference(phone, user, message, state)
@@ -79,39 +78,42 @@ def handle_name(phone, message):
     })
     return registration_step("awaiting_location")
 
-def handle_location(phone, message, lat, lon):
+def handle_location(phone, message, lat, lon, is_retry=False):
     if not (lat and lon):
         return registration_step("awaiting_location")
-    
+
     try:
         lat = float(lat)
         lon = float(lon)
         spots = get_nearby_spots(lat, lon)
-        
+
         if not spots:
             return "⚠️ No surf spots found nearby. Please share a different location"
-        
-        # Send template with spots
+
+        # Send surf spots template
         twilio = TwilioClient()
-        twilio.send_surfspots_template(
+        twilio.send_surfspots_template(  # <-- Uses your template function
             to=phone.split(":")[-1],
             spots=spots
         )
-        
-        # Send instruction message
-        instruction = "Please select your preferred surf spot by replying with its number (ID) from the list above."
+
+        # Instruction message
+        instruction = "📍 Please select your surf spot by replying with its *ID* (number) from the list above."
         twilio.send_whatsapp(phone.split(":")[-1], instruction)
-        
+
+        # Preserve state if retrying (awaiting_spot)
+        new_state = "awaiting_spot" if is_retry else "awaiting_location"
         update_user(phone, {
             "latitude": lat,
             "longitude": lon,
             "temp_spots": json.dumps(spots),
-            "registration_state": "awaiting_spot"
+            "registration_state": new_state
         })
-        return None  # No further response needed
+        return None
+
     except Exception as e:
         print(f"Location Error: {e}")
-        return "⚠️ Invalid location. Please use the location button"
+        return f"⚠️ Invalid location. Please use the location button ,error {e}"
 
 
 def handle_spot_selection(phone, user, message):
