@@ -21,7 +21,7 @@ def handle_registration_flow(user, phone, message, lat=None, lon=None):
             return handle_location(phone, message, lat, lon)
         
         if state == "awaiting_spot" and (lat or lon):
-            return handle_location(phone, message, lat, lon, is_retry=True)
+            return handle_spot_selection(phone,user, message)
         
         if state.startswith("preference_"):
             return handle_preference(phone, user, message, state)
