@@ -125,8 +125,6 @@ def handle_spot_selection(phone, user, message):
             "temp_spots": None
         })
         return registration_step("preference_swelldirection")
-    except (ValueError, StopIteration):
-        return "❌ Invalid selection. Please choose a valid spot from the list."
     except Exception as e:
         print(f"Error in handle_spot_selection: {e}")
         return f"⚠️ An error occurred. Please try again. error: {e}"
