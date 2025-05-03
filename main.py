@@ -52,9 +52,41 @@ from flask import Flask, request, jsonify
 
 from twilio.rest import Client
 import os
+from apis import fetch_marine_weather
 
 app = Flask(__name__)
 
+def cron_job():
+    user_details = {
+        "user_name": "Ishita Verma",
+        "user_number": "9897283397",
+        "surf_spots": [4, 5],
+        "swell": {
+            "height": (1, 4),
+            "direction": (30, 160),
+            "period": (6, 12),
+        },
+        "secondary_swell": {
+            "height": (1, 3),
+            "direction": (40, 190),
+            "period": (8, 18),
+        },
+        "wind": {
+            "direction": (90, 240),
+            "speed": (3, 20),
+        },
+    }
+
+    print(f"Processing user: {user_details['user_number']}")
+
+    data = fetch_marine_weather(54.294733, -8.95815)
+    if data:
+        print("Weather data fetched successfully.")
+        print(data)
+    else:
+        print("Failed to fetch weather data.")
+
+            
 
 def send_sms():
     # Fetch credentials and numbers from environment
@@ -69,7 +101,7 @@ def send_sms():
     print(f"From Number: {from_number}")
     print(f"To Number: {to_number}")
     # Check if the client is initialized
-    
+
     # Send the message
     message = client.messages.create(
         body="hi",

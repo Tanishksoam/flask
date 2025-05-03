@@ -1,6 +1,65 @@
 from twilio.rest import Client
 import os
 import json
+import requests
+
+STORMGLASS_API_URL = "https://api.stormglass.io/v2/weather/point"
+STORMGLASS_API_KEY = "4303b794-021a-11f0-b8ac-0242ac130003-4303b802-021a-11f0-b8ac-0242ac130003"
+
+def fetch_marine_weather(latitude, longitude):
+    """Fetches marine weather data from Stormglass API for 72 hours using NOAA sources only."""
+    params = {
+        "lat": latitude,
+        "lng": longitude,
+        "params": ",".join([
+            "swellHeight", "swellPeriod", "swellDirection",
+            "secondarySwellHeight", "secondarySwellPeriod", "secondarySwellDirection",
+            "windSpeed", "windDirection"
+        ])
+    }
+
+    headers = {"Authorization": STORMGLASS_API_KEY}
+
+    try:
+        response = requests.get(
+            STORMGLASS_API_URL,
+            params=params,
+            headers=headers,
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            hours_data = data.get("hours", [])
+
+            all_weather_data = []  # Store details for all 72 hours
+
+            for hour in hours_data[:72]:  # Iterate over first 72 hours
+                weather_details = {
+                    "time": hour.get("time", ""),
+                    "swell_wave_height": hour.get("swellHeight", {}).get("sg", 0),
+                    "swell_wave_period": hour.get("swellPeriod", {}).get("sg", 0),
+                    "swell_wave_direction": hour.get("swellDirection", {}).get("sg", 0),
+
+                    "secondary_swell_height": hour.get("secondarySwellHeight", {}).get("sg", 0),
+                    "secondary_swell_period": hour.get("secondarySwellPeriod", {}).get("sg", 0),
+                    "secondary_swell_direction": hour.get("secondarySwellDirection", {}).get("sg", 0),
+
+                    "wind_speed": hour.get("windSpeed", {}).get("sg", 0),
+                    "wind_direction": hour.get("windDirection", {}).get("sg", 0),
+                }
+
+                all_weather_data.append(weather_details)  # Append to list
+
+            return all_weather_data  # Return weather data for 72 hours
+
+        print(f"⚠️ Stormglass API Error: {response.status_code} - {response.text}")
+        return None
+
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ Stormglass API Request Failed: {e}")
+        return None
+
 
 class TwilioClient:
     def __init__(self):
