@@ -64,7 +64,12 @@ def send_sms():
     to_number = "whatsapp:+919897283397"
 
     client = Client(account_sid, auth_token)
-
+    print(f"Account SID: {account_sid}")
+    print(f"Auth Token: {auth_token}")
+    print(f"From Number: {from_number}")
+    print(f"To Number: {to_number}")
+    # Check if the client is initialized
+    
     # Send the message
     message = client.messages.create(
         body="hi",
