@@ -1,4 +1,4 @@
-# from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify
 # from sqlfunctions import get_user
 # from apis import TwilioClient
 # from utils import handle_registration_flow
@@ -53,6 +53,9 @@
 from twilio.rest import Client
 import os
 
+app = Flask(__name__)
+
+
 def send_sms():
     # Fetch credentials and numbers from environment
     account_sid = os.getenv("TWILIO_ACCOUNT_SID")
@@ -70,6 +73,8 @@ def send_sms():
     )
 
     print(f"Message sent: SID = {message.sid}")
-
+@app.route("/")
+def health_check():
+    return jsonify({"status": "active", "service": "surf-alert-bot"}), 200
 if __name__ == "__main__":
     send_sms()
