@@ -100,9 +100,6 @@ def send_sms():
     print(f"Auth Token: {auth_token}")
     print(f"From Number: {from_number}")
     print(f"To Number: {to_number}")
-    # Check if the client is initialized
-
-    # Send the message
     message = client.messages.create(
         body="hi",
         from_=from_number,
@@ -114,4 +111,5 @@ def send_sms():
 def health_check():
     return jsonify({"status": "active", "service": "surf-alert-bot"}), 200
 if __name__ == "__main__":
+    cron_job()
     send_sms()
