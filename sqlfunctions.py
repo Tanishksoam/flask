@@ -8,7 +8,8 @@ def get_db_connection():
     return psycopg2.connect(
         host=os.getenv("PGHOST"),
         port=os.getenv("PGPORT"),
-        dbname=os.getenv("POSTGRES_DB"),
+        # dbname=os.getenv("POSTGRES_DB"),
+        dbname="surf_spots",
         user=os.getenv("PGUSER"),
         password=os.getenv("PGPASSWORD"),
         connect_timeout=10
@@ -99,3 +100,38 @@ def get_all_users():
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute("SELECT * FROM users WHERE registration_state = 'completed'")
             return cursor.fetchall()
+
+
+def get_surf_spot_details(spot_id):
+    """Fetches surf spot details from the PostgreSQL database using the spot's ID."""
+    query = "SELECT id, url, spot_name, latitude, longitude FROM surf_spots WHERE id = %s"
+    connection = None
+    try:
+        # Get the database connection
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        # Execute the SQL query with the spot ID as a parameter
+        cursor.execute(query, (spot_id))
+        
+        # Fetch the result
+        result = cursor.fetchone()
+        if result:
+            spot_details = {
+                "id": result[0],
+                "url": result[1],
+                "spot_name": result[2],
+                "latitude": result[3],
+                "longitude": result[4],
+            }
+            return spot_details
+        else:
+            return {"message": "Surf spot not found"}
+    
+    except Exception as e:
+        print(f"🚨 Database error: {e}")
+        return {"error": "Failed to fetch surf spot details"}
+    finally:
+        if connection:
+            cursor.close()
+            connection.close()

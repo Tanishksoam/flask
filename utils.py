@@ -228,3 +228,26 @@ def get_next_preference(current):
         return order[order.index(current) + 1]
     except IndexError:
         return None
+
+
+def check_hourly_conditions(hour_data, user_prefs):
+    """Check if all 5 parameters meet user preferences"""
+    try:
+        # Swell checks
+        swell_ok = (
+            user_prefs['swell']['height'][0] <= hour_data['swell_wave_height'] <= user_prefs['swell']['height'][1] and
+            user_prefs['swell']['period'][0] <= hour_data['swell_wave_period'] <= user_prefs['swell']['period'][1] and
+            user_prefs['swell']['direction'][0] <= hour_data['swell_wave_direction'] <= user_prefs['swell']['direction'][1]
+        )
+        
+        # Wind checks
+        wind_ok = (
+            user_prefs['wind']['speed'][0] <= hour_data['wind_speed'] <= user_prefs['wind']['speed'][1] and
+            user_prefs['wind']['direction'][0] <= hour_data['wind_direction'] <= user_prefs['wind']['direction'][1]
+        )
+        
+        return swell_ok and wind_ok
+        
+    except KeyError as e:
+        print(f"Missing weather data field: {str(e)}")
+        return False
