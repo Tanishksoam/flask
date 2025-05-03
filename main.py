@@ -60,7 +60,7 @@ def send_sms():
     # Fetch credentials and numbers from environment
     account_sid = os.getenv("TWILIO_ACCOUNT_SID")
     auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-    from_number = os.getenv("TWILIO_PHONE_NUMBER")
+    from_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
     to_number = "whatsapp:+919897283397"
 
     client = Client(account_sid, auth_token)
