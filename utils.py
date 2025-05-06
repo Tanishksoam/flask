@@ -230,24 +230,15 @@ def get_next_preference(current):
         return None
 
 
-def check_hourly_conditions(hour_data, user_prefs):
-    """Check if all 5 parameters meet user preferences"""
+def check_hourly_conditions(hour_data, user):
+    """Check if all parameters meet user preferences"""
     try:
-        # Swell checks
-        swell_ok = (
-            user_prefs['swell']['height'][0] <= hour_data['swell_wave_height'] <= user_prefs['swell']['height'][1] and
-            user_prefs['swell']['period'][0] <= hour_data['swell_wave_period'] <= user_prefs['swell']['period'][1] and
-            user_prefs['swell']['direction'][0] <= hour_data['swell_wave_direction'] <= user_prefs['swell']['direction'][1]
-        )
+        swell_dir_ok = (user['swelldirection_min'] <= hour_data['swell_wave_direction'] <= user['swelldirection_max'])
+        swell_height_ok = (user['swellheight_min'] <= hour_data['swell_wave_height'] <= user['swellheight_max'])
+        swell_period_ok = (user['swellperiod_min'] <= hour_data['swell_wave_period'] <= user['swellperiod_max'])
+        wind_speed_ok = (user['windspeed_min'] <= hour_data['wind_speed'] <= user['windspeed_max'])
         
-        # Wind checks
-        wind_ok = (
-            user_prefs['wind']['speed'][0] <= hour_data['wind_speed'] <= user_prefs['wind']['speed'][1] and
-            user_prefs['wind']['direction'][0] <= hour_data['wind_direction'] <= user_prefs['wind']['direction'][1]
-        )
-        
-        return swell_ok and wind_ok
-        
+        return all([swell_dir_ok, swell_height_ok, swell_period_ok, wind_speed_ok])
     except KeyError as e:
-        print(f"Missing weather data field: {str(e)}")
+        print(f"Missing preference field: {str(e)}")
         return False

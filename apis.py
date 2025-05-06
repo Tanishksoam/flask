@@ -4,7 +4,7 @@ import json
 import requests
 
 STORMGLASS_API_URL = "https://api.stormglass.io/v2/weather/point"
-STORMGLASS_API_KEY = "c98a75e6-064d-11f0-95f7-0242ac130003-c98a765e-064d-11f0-95f7-0242ac130003"
+STORMGLASS_API_KEY = "4b8fceac-e2f8-11ef-9159-0242ac130003-4b8fcf60-e2f8-11ef-9159-0242ac130003"
 
 def fetch_marine_weather(latitude, longitude):
     """Fetches marine weather data from Stormglass API for 72 hours using NOAA sources only."""
