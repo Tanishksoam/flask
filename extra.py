@@ -94,7 +94,7 @@ def send_sms(to_number, message_body):
     try:
         account_sid = os.getenv("TWILIO_ACCOUNT_SID")
         auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-        from_number = os.getenv('TWILIO_PHONE_NUMBER')  
+        from_number = os.getenv('TWILIO_WHATSAPP_NUMBER')  
         
         logger.info(f"Attempting to send message to: {to_number}")
         logger.info(f"Using from number: {from_number}")
